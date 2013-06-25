@@ -338,7 +338,12 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     const NSUInteger col = index % _cachedNumberOfVisibleColumns;
     const NSUInteger row = index / _cachedNumberOfVisibleColumns;
     
-    return NSMakeRect(floor(col * _cachedItemSize.width + _cachedColumnSpacing), floor(row * _cachedItemSize.height + (_rowSpacing / 2.f)), _itemSize.width, _itemSize.height);
+    NSRect r = NSMakeRect(floor(col * _cachedItemSize.width + _cachedColumnSpacing), floor(row * _cachedItemSize.height + (_rowSpacing / 2.f)), _itemSize.width, _itemSize.height);
+    if(_cachedNumberOfVisibleColumns > 1){
+        r.origin.x += [self insetRectangle].origin.x;
+        r.origin.y += [self insetRectangle].origin.y;
+    }
+    return r;
 }
 
 #pragma mark -
@@ -363,7 +368,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     [item setSelected:YES animated:![CATransaction disableActions]];
     
     [_selectionIndexes addIndex:index];
-    
+ 
     if(_delegateHas.selectionChanged) [_delegate selectionChangedInGridView:self];
 }
 
@@ -405,7 +410,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
          [obj setSelected:NO animated:YES];
      }];
     
-    if(_delegateHas.selectionChanged) [_delegate selectionChangedInGridView:self];
+    if(_delegateHas.selectionChanged && [_selectionIndexes count] > 1) [_delegate selectionChangedInGridView:self];
 }
 
 #pragma mark -
@@ -431,15 +436,20 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
      }];
 }
 
+- (NSRect) insetRectangle
+{
+    return NSMakeRect(20, 20, 20, 20);
+}
+
 - (void)OE_calculateCachedValuesAndQueryForDataChanges:(BOOL)shouldQueryForDataChanges
 {
     // Collect some basic information of the current environment
     NSScrollView *enclosingScrollView = [self enclosingScrollView];
-    NSRect        visibleRect         = [enclosingScrollView documentVisibleRect];
+    NSRect        visibleRect         = [self scrollViewDocumentRect];
     NSPoint       contentOffset       = visibleRect.origin;
     
     const NSSize cachedContentSize    = [self bounds].size;
-    const NSSize viewSize             = visibleRect.size;
+    NSSize viewSize             = visibleRect.size;
     
     // These variables help determine if the calculated values are different than their cached counter parts. These values
     // are recalculated only if needed, so they are all initialized with their cached counter parts. If the recalculated
@@ -469,7 +479,12 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
         // of items within the data source.  Just because a column is potentially visible doesn't mean that there is enough data to populate it.
         numberOfVisibleColumns = MAX((NSUInteger)(floor(viewSize.width / itemSize.width)), 1);
         numberOfRows           = ceil((CGFloat)numberOfItems / MAX((CGFloat)numberOfVisibleColumns, 1));
-        
+
+        if(numberOfVisibleColumns == 1){
+            visibleRect = NSInsetRect(visibleRect, -[self insetRectangle].size.width, -[self insetRectangle].size.height);
+            viewSize             = visibleRect.size;
+        }
+
         // The cell's height include the original itemSize.height + rowSpacing. The cell's column spacing is based on the number of visible columns.
         // The cell will be at least itemSize.width + minimumColumnSpacing, it could grow as larg as the width of the view
         itemSize = NSMakeSize(MAX(itemSize.width, round(viewSize.width / numberOfVisibleColumns)), itemSize.height);
@@ -478,7 +493,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
         // needed).
         contentSize.width = viewSize.width;
     }
-    
+
     // Check to see if the frame's height has changed to update the number of visible rows
     if(itemSize.height == 0)
     {
@@ -514,6 +529,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
         
         // Changing the size of the frame may also change the contentOffset, recalculate that value
         visibleRect   = [enclosingScrollView documentVisibleRect];
+        visibleRect = NSInsetRect(visibleRect, [self insetRectangle].size.width, [self insetRectangle].size.height);
         contentOffset = visibleRect.origin;
         
         // Check to see if the number visible columns or the cell size has changed as these vents will cause the layout to be recalculated
@@ -547,7 +563,8 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     if(_cachedNumberOfItems == 0) return;
     
     // Check to see if the visible cells have changed
-    const CGFloat    contentOffsetY       = NSMinY([[self enclosingScrollView] documentVisibleRect]);
+    const NSRect visibleRect = [self scrollViewDocumentRect];
+    const CGFloat    contentOffsetY       = NSMinY(visibleRect);
     const NSUInteger firstVisibleIndex    = MAX((NSInteger)floor(contentOffsetY / _cachedItemSize.height) - 1, 0) * _cachedNumberOfVisibleColumns;
     const NSUInteger numberOfVisibleCells = _cachedNumberOfVisibleColumns * (_cachedNumberOfVisibleRows + 2);
     
@@ -712,7 +729,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
 {
 	[super updateTrackingAreas];
 	if (_trackingArea) { [self removeTrackingArea:_trackingArea]; }
-	NSTrackingAreaOptions options = (NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow);
+	NSTrackingAreaOptions options = (NSTrackingInVisibleRect | NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow);
 	_trackingArea = [[NSTrackingArea alloc] initWithRect:[self bounds] options:options owner:self userInfo:nil];
 	[self addTrackingArea:_trackingArea];
 }
@@ -800,7 +817,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
         [self setFrame:[[self enclosingScrollView] bounds]];
         [self OE_centerNoItemsView];
     }
-    const NSRect visibleRect = [[self enclosingScrollView] documentVisibleRect];
+    const NSRect visibleRect = [self scrollViewDocumentRect];
     if(!NSEqualSizes(_cachedViewSize, visibleRect.size))
     {
         [self OE_cancelFieldEditor];
@@ -811,7 +828,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
 - (void)OE_clipViewBoundsChanged:(NSNotification *)notification
 {
     [self OE_updateDecorativeLayers];
-    const NSRect visibleRect = [[self enclosingScrollView] documentVisibleRect];
+    const NSRect visibleRect = [self scrollViewDocumentRect];
     if(abs(_cachedContentOffset.y - visibleRect.origin.y) > _itemSize.height)
     {
         _cachedContentOffset = visibleRect.origin;
@@ -823,7 +840,8 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
 {
     if(!_noItemsView) return;
     
-    const NSRect  visibleRect = [[self enclosingScrollView] visibleRect];
+    const NSRect visibleRect = [self scrollViewRect];
+//    const NSRect  visibleRect = [[self enclosingScrollView] visibleRect];
     const NSSize  viewSize    = [_noItemsView frame].size;
     const NSRect  viewFrame   = NSMakeRect(ceil((NSWidth(visibleRect) - viewSize.width) / 2.0), ceil((NSHeight(visibleRect) - viewSize.height) / 2.0), viewSize.width, viewSize.height);
     [_noItemsView setFrame:viewFrame];
@@ -853,7 +871,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    const NSRect decorativeFrame = [[self enclosingScrollView] documentVisibleRect];
+    const NSRect decorativeFrame = [self scrollViewDocumentRect];
     [_backgroundLayer setFrame:decorativeFrame];
     [_foregroundLayer setFrame:decorativeFrame];
     [_dragIndicationLayer setFrame:NSInsetRect(decorativeFrame, 1.0, 1.0)];
@@ -938,9 +956,17 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     _trackingLayer            = [self OE_gridLayerForPoint:pointInView];
     
     if(![_trackingLayer isInteractive]) _trackingLayer = _rootLayer;
-    
+
     OEGridViewCell *cell = nil;
     if ([_trackingLayer isKindOfClass:[OEGridViewCell class]]) cell = (OEGridViewCell *)_trackingLayer;
+    
+    // Check superlayers
+    OEGridViewCell *parentCell = nil;
+    if(_trackingLayer.superlayer){
+        if([_trackingLayer.superlayer isKindOfClass:[OEGridViewCell class]]){
+            parentCell = (OEGridViewCell *)_trackingLayer.superlayer;
+        }
+    }
     
     if(cell == nil && _trackingLayer != nil && _trackingLayer != _rootLayer)
     {
@@ -975,7 +1001,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     {
         _trackingLayer = _rootLayer;
         
-        if(!invertSelection) [self deselectAll:self];
+        if(!invertSelection && !parentCell) [self deselectAll:self];
         
         // If the command key was pressed and there are already a list of selected indexes, then we may want to invert the items that are already selected
         if(invertSelection && [_selectionIndexes count] > 0) _originalSelectionIndexes = [_selectionIndexes copy];
@@ -1001,7 +1027,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
                 [self mouseDragged:lastMouseDragEvent];
                 
                 // Stop tracking last mouse drag event if we've reached the bottom or top of the scrollable area
-                const NSRect  visibleRect = [[self enclosingScrollView] documentVisibleRect];
+                const NSRect visibleRect = [self scrollViewDocumentRect];
                 const NSRect  bounds      = [self bounds];
                 if (NSMinY(bounds) == NSMinY(visibleRect) || NSMaxY(bounds) == NSMaxY(visibleRect)) lastMouseDragEvent = nil;
             }
@@ -1027,6 +1053,20 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     _trackingLayer     = nil;
     
     if(isTrackingRootLayer) [NSEvent stopPeriodicEvents];
+}
+- (NSRect) scrollViewDocumentRect
+{
+    NSRect vRect = [[self enclosingScrollView] documentVisibleRect];
+    vRect = NSInsetRect(vRect, [self insetRectangle].size.width, [self insetRectangle].size.height);
+    return vRect;
+}
+- (NSRect) scrollViewRect
+{
+    NSRect vRect = [[self enclosingScrollView] visibleRect];
+    if(_cachedNumberOfVisibleColumns > 1){
+        vRect = NSInsetRect(vRect, [self insetRectangle].size.width, [self insetRectangle].size.height);
+    }
+    return vRect;
 }
 
 - (void)mouseDragged:(NSEvent *)theEvent
