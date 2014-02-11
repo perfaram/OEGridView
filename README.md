@@ -70,7 +70,7 @@ A basic `OEGridViewCell` subclass might look like this:
     if ((self = [super init])) {
     	// Set the layer attributes
         self.receivesHoverEvents = YES;
-        self.backgroundColor = [][NSColor redColor] CGColor];
+        self.backgroundColor = [[NSColor redColor] CGColor];
         // Create and configure any sublayers
         _imageLayer = [OEGridLayer layer];
         _imageLayer.contentsGravity = kCAGravityResize;
