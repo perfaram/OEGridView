@@ -98,14 +98,59 @@
 #pragma mark -
 #pragma mark Properties
 
-@property(nonatomic, strong) CALayer    *foregroundLayer;      // A decorative background layer, the layer should return nil for -hitTest
-@property(nonatomic, strong) CALayer    *backgroundLayer;      // A decorative foreground layer, the layer should return nil for -hitTest
-@property(nonatomic, assign) CGFloat     minimumColumnSpacing; // Minimum spacing between columns
-@property(nonatomic, assign) CGFloat     rowSpacing;           // Minimum spacing between rows
-@property(nonatomic, assign) CGSize      itemSize;             // User defined cell size (defaults to 250 x 250)
-@property(nonatomic, copy)   NSIndexSet *selectionIndexes;     // NSIndexSet of selected indexes
+/**
+ *  A decorative background layer, the layer should return nil for -hitTest
+ */
+@property(nonatomic, strong) CALayer    *foregroundLayer;
 
-@property(nonatomic, assign) id<OEGridViewDataSource> dataSource; // Responsible for supplying the cells of each object represented in the grid
-@property(nonatomic, assign) id<OEGridViewDelegate>   delegate;   // Receives information regarding the user interaction of the grid and it's cells
+/**
+ *  A decorative foreground layer, the layer should return nil for -hitTest
+ */
+@property(nonatomic, strong) CALayer    *backgroundLayer;
+
+/**
+ *  Minimum spacing between columns
+ */
+@property(nonatomic, assign) CGFloat     minimumColumnSpacing;
+
+/**
+ *  Minimum spacing between rows
+ */
+@property(nonatomic, assign) CGFloat     rowSpacing;
+
+/**
+ *  User defined cell size (defaults to 250 x 250)
+ */
+@property(nonatomic, assign) CGSize      itemSize;
+
+/**
+ *  NSIndexSet of selected indexes
+ */
+@property(nonatomic, copy)   NSIndexSet *selectionIndexes;
+
+/**
+ *  let people config the NSDraggingFormation
+ */
+@property(nonatomic, assign) NSDraggingFormation draggingFormation;
+
+/**
+ *  Selection box's borderColor, defaults to whiteColor. box's inside color will be 0.3 alphaComponent with this property.
+ */
+@property(nonatomic, strong) NSColor    *selectionColor;
+
+/**
+ *  The background color of the OEGridView.
+ */
+@property(nonatomic, strong) NSColor    *backgroundColor;
+
+/**
+ *  Responsible for supplying the cells of each object represented in the grid
+ */
+@property(nonatomic, assign) id<OEGridViewDataSource> dataSource;
+
+/**
+ *  Receives information regarding the user interaction of the grid and it's cells
+ */
+@property(nonatomic, assign) id<OEGridViewDelegate>   delegate;
 
 @end

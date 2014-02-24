@@ -165,6 +165,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     _minimumColumnSpacing = 24.0;
     _rowSpacing           = 20.0;
     _itemSize             = CGSizeMake(250.0, 250.0);
+    _draggingFormation    = NSDraggingFormationDefault;
     
     // Allocate memory for objects
     _selectionIndexes    = [[NSMutableIndexSet alloc] init];
@@ -215,6 +216,15 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     return layer;
 }
 
+#pragma mark - Accessors
+
+- (void)setBackgroundColor:(NSColor *)backgroundColor
+{
+    _backgroundColor = backgroundColor;
+    [_rootLayer setBackgroundColor:[self.backgroundColor CGColor]];
+    [_rootLayer setNeedsDisplay];
+}
+
 #pragma mark - CALayer delegate
 
 - (BOOL)layer:(CALayer *)layer shouldInheritContentsScale:(CGFloat)newScale
@@ -244,7 +254,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
 
 - (OEGridViewCell *)cellForItemAtIndex:(NSUInteger)index makeIfNecessary:(BOOL)necessary
 {
-    OEGridViewCell *result = [_visibleCellByIndex objectForKey:[NSNumber numberWithUnsignedInt:index]];
+    OEGridViewCell *result = _visibleCellByIndex[@((unsigned int)index)];
     if(result == nil && necessary)
     {
         result = [_dataSource gridView:self cellForItemAtIndex:index];
@@ -313,7 +323,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     }
     else
     {
-        result = [NSIndexSet indexSet];
+        result = [NSMutableIndexSet indexSet];
     }
     
     // Return an immutable copy
@@ -418,8 +428,8 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     [indexes enumerateIndexesUsingBlock:
      ^ (NSUInteger idx, BOOL *stop)
      {
-         NSNumber *key = [NSNumber numberWithUnsignedInteger:idx];
-         OEGridViewCell *cell = [_visibleCellByIndex objectForKey:key];
+         NSNumber *key = @(idx);
+         OEGridViewCell *cell = _visibleCellByIndex[key];
          if(cell)
          {
              if([_fieldEditor delegate] == cell) [self OE_cancelFieldEditor];
@@ -688,7 +698,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
                      
                      if(!oldCell) [newCell setFrame:[self rectForCellAtIndex:idx]];
                      
-                     [_visibleCellByIndex setObject:newCell forKey:[NSNumber numberWithUnsignedInteger:idx]];
+                     _visibleCellByIndex[@(idx)] = newCell;
                      [_rootLayer addSublayer:newCell];
                  }
                  
@@ -1061,7 +1071,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
                 if([draggingItems count] > 0)
                 {
                     _draggingSession = [self beginDraggingSessionWithItems:draggingItems event:theEvent source:self];
-                    [_draggingSession setDraggingFormation:NSDraggingFormationStack];
+                    [_draggingSession setDraggingFormation:self.draggingFormation];
                 }
                 
                 // Cacnel the tracking layer (which will cancel the event tracking loop).  The dragging session has it's own mouse tracking loop.
@@ -1098,8 +1108,12 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
         if(_selectionLayer == nil)
         {
             _selectionLayer = [[CALayer alloc] init];
-            [_selectionLayer setBackgroundColor:[[NSColor colorWithCalibratedWhite:1.0 alpha:0.3] CGColor]];
-            [_selectionLayer setBorderColor:[[NSColor whiteColor] CGColor]];
+            
+            if (!_selectionColor)
+                _selectionColor = [NSColor whiteColor];
+
+            [_selectionLayer setBackgroundColor:[[self.selectionColor colorWithAlphaComponent:0.3] CGColor]];
+            [_selectionLayer setBorderColor:[self.selectionColor CGColor]];
             [_selectionLayer setBorderWidth:1.0];
             [_rootLayer addSublayer:_selectionLayer];
             [self OE_reorderSublayers];
@@ -1265,7 +1279,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     [_fieldEditor setString:title];
     [_fieldEditor setDelegate:cell];
     [_fieldEditor setHidden:NO];
-    [[self window] makeFirstResponder:[[_fieldEditor subviews] objectAtIndex:0]];
+    [[self window] makeFirstResponder:[_fieldEditor subviews][0]];
 }
 
 - (void)OE_cancelFieldEditor
