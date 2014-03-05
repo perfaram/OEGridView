@@ -120,6 +120,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
         unsigned int acceptDrop : 1;
         unsigned int magnifiedWithEvent : 1;
         unsigned int magnifyEndedWithEvent : 1;
+        unsigned int draggingSessionEndedAtPoint : 1;
     } _delegateHas;                                 // Cached methods that the delegate implements
     
     struct
@@ -1533,7 +1534,11 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
 
 - (void)draggingSession:(NSDraggingSession *)session endedAtPoint:(NSPoint)screenPoint operation:(NSDragOperation)operation
 {
-    _draggingSession = nil;
+    if (_delegateHas.draggingSessionEndedAtPoint) {
+        [_delegate gridView:self draggingSession:session endedAtPoint:screenPoint operation:operation];
+    } else {
+        _draggingSession = nil;
+    }
 }
 
 #pragma mark -
@@ -1613,6 +1618,7 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
         _delegateHas.acceptDrop                      = [_delegate respondsToSelector:@selector(gridView:acceptDrop:)];
         _delegateHas.magnifiedWithEvent              = [_delegate respondsToSelector:@selector(gridView:magnifiedWithEvent:)];
         _delegateHas.magnifyEndedWithEvent           = [_delegate respondsToSelector:@selector(gridView:magnifyEndedWithEvent:)];
+        _delegateHas.draggingSessionEndedAtPoint     = [_delegate respondsToSelector:@selector(gridView:draggingSession:endedAtPoint:operation:)];
     }
 }
 
