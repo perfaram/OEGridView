@@ -136,7 +136,7 @@
 
 - (void)OE_reorderLayers
 {
-    [super insertSublayer:_foregroundLayer atIndex:[[self sublayers] count]];
+    [super insertSublayer:_foregroundLayer atIndex:(unsigned int)[[self sublayers] count]];
 }
 
 - (void)setForegroundLayer:(CALayer *)foregroundLayer
