@@ -160,6 +160,12 @@ const NSTimeInterval OEPeriodicInterval     = 0.075;    // Subsequent interval o
     return self;
 }
 
+-(void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidBecomeKeyNotification object:self.window];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidResignKeyNotification object:self.window];
+}
+
 - (void)OE_commonGridViewInit
 {
     // Set default values
